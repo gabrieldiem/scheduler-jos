@@ -73,8 +73,12 @@ TRAPHANDLER_NOEC(trap32, IRQ_OFFSET + IRQ_TIMER)
 
 TRAPHANDLER_NOEC(trap48, T_SYSCALL)
 
-
-/*
- * Your code here for _alltraps
- */
 _alltraps:
+	pushl %ds
+	pushl %es
+
+	pushal
+	push %esp
+
+	call trap
+ */

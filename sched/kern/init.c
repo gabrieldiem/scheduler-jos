@@ -68,8 +68,10 @@ i386_init(void)
 		ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
-	ENV_CREATE(user_hello, ENV_TYPE_USER);
-	ENV_CREATE(user_hello, ENV_TYPE_USER);
+	// El primer proceso que se va a ejecutar es el proceso user_hello si no
+	// tenemos los scheds
+	// ENV_CREATE(user_hello, ENV_TYPE_USER);
+	// ENV_CREATE(user_hello, ENV_TYPE_USER);
 	ENV_CREATE(user_hello, ENV_TYPE_USER);
 #endif  // TEST*
 
@@ -78,7 +80,7 @@ i386_init(void)
 	env_run(&envs[0]);
 
 	// Schedule and run the first user environment!
-	// sched_yield();
+	//sched_yield();
 }
 
 // While boot_aps is booting a given CPU, it communicates the per-core
