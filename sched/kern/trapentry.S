@@ -81,4 +81,3 @@ _alltraps:
 	push %esp
 
 	call trap
- */
