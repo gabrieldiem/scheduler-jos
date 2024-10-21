@@ -156,3 +156,7 @@ Continuando la ejecución, se imprime el string mencionado como output del progr
 La ejecución finaliza exitosamente:
 
 <img src="./docs/imgs/syscall_verification_8.png" height="100px">
+
+### Implementación de scheduler con prioridades
+
+Programas de test: `prioritytest1.c`
