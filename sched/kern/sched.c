@@ -7,27 +7,77 @@
 
 void sched_halt(void);
 
+static struct Env *
+find_next_env_of_type(int start_index, int end_index, int env_type)
+{
+	struct Env *env = NULL;
+
+	for (int i = start_index; i <= end_index; i++) {
+		if (envs[i].env_status == env_type) {
+			env = &envs[i];
+			break;
+		}
+	}
+
+	return env;
+}
+
+static struct Env *
+round_robin_find_next()
+{
+	int start_index = 0;
+
+	// If no env is running currently, return the first runnable env
+	if (curenv == NULL) {
+		return find_next_env_of_type(start_index, NENV - 1, ENV_RUNNABLE);
+	}
+
+	start_index = ENVX(curenv->env_id) + 1;
+	struct Env *next =
+	        find_next_env_of_type(start_index, NENV - 1, ENV_RUNNABLE);
+
+	// If not found after curenv
+	if (next == NULL) {
+		next = find_next_env_of_type(0, start_index, ENV_RUNNABLE);
+	}
+
+	// If not found before curenv (because the logic is circular)
+	// and curenv is still running
+	if (next == NULL && curenv->env_status == ENV_RUNNING) {
+		next = curenv;
+	}
+
+	return next;
+}
+
 // Choose a user environment to run and run it.
 void
 sched_yield(void)
 {
 #ifdef SCHED_ROUND_ROBIN
-	// Implement simple round-robin scheduling.
+	//    Implement simple round-robin scheduling.
 	//
-	// Search through 'envs' for an ENV_RUNNABLE environment in
-	// circular fashion starting just after the env this CPU was
-	// last running. Switch to the first such environment found.
+	//    Search through 'envs' for an ENV_RUNNABLE environment in
+	//    circular fashion starting just after the env this CPU was
+	//    last running. Switch to the first such environment found.
 	//
-	// If no envs are runnable, but the environment previously
-	// running on this CPU is still ENV_RUNNING, it's okay to
-	// choose that environment.
+	//    If no envs are runnable, but the environment previously
+	//    running on this CPU is still ENV_RUNNING, it's okay to
+	//    choose that environment.
 	//
-	// Never choose an environment that's currently running on
-	// another CPU (env_status == ENV_RUNNING). If there are
-	// no runnable environments, simply drop through to the code
-	// below to halt the cpu.
+	//    Never choose an environment that's currently running on
+	//    another CPU (env_status == ENV_RUNNING). If there are
+	//    no runnable environments, simply drop through to the code
+	//    below to halt the cpu.
 
-	// Your code here - Round robin
+	struct Env *next = round_robin_find_next();
+
+	if (next != NULL) {
+		env_run(next);
+	} else {
+		sched_halt();
+	}
+
 #endif
 
 #ifdef SCHED_PRIORITIES
@@ -41,7 +91,6 @@ sched_yield(void)
 
 	// Your code here - Priorities
 #endif
-
 	// Without scheduler, keep runing the last environment while it exists
 	if (curenv) {
 		env_run(curenv);
@@ -85,8 +134,8 @@ sched_halt(void)
 	// Release the big kernel lock as if we were "leaving" the kernel
 	unlock_kernel();
 
-	// Once the scheduler has finishied it's work, print statistics on
-	// performance. Your code here
+	// Once the scheduler has finishied it's work, print statistics
+	// on performance. Your code here
 
 	// Reset stack pointer, enable interrupts and then halt.
 	asm volatile("movl $0, %%ebp\n"
