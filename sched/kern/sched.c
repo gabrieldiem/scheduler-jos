@@ -8,7 +8,7 @@
 void sched_halt(void);
 
 static struct Env *
-find_next_env_of_type(int start_index, int end_index, int env_type)
+find_first_env_of_type(int start_index, int end_index, int env_type)
 {
 	struct Env *env = NULL;
 
@@ -29,16 +29,16 @@ round_robin_find_next()
 
 	// If no env is running currently, return the first runnable env
 	if (curenv == NULL) {
-		return find_next_env_of_type(start_index, NENV - 1, ENV_RUNNABLE);
+		return find_first_env_of_type(start_index, NENV - 1, ENV_RUNNABLE);
 	}
 
 	start_index = ENVX(curenv->env_id) + 1;
 	struct Env *next =
-	        find_next_env_of_type(start_index, NENV - 1, ENV_RUNNABLE);
+	        find_first_env_of_type(start_index, NENV - 1, ENV_RUNNABLE);
 
 	// If not found after curenv
 	if (next == NULL) {
-		next = find_next_env_of_type(0, start_index, ENV_RUNNABLE);
+		next = find_first_env_of_type(0, start_index, ENV_RUNNABLE);
 	}
 
 	// If not found before curenv (because the logic is circular)
