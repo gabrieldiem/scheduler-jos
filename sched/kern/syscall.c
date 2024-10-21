@@ -429,6 +429,21 @@ sys_ipc_recv(void *dstva)
 	return 0;
 }
 
+static uint32_t
+sys_get_priority(void)
+{
+	return curenv->priority;
+}
+
+static void
+sys_decrease_priority(uint32_t delta_to_decrease)
+{
+	uint32_t delta_normalized = MIN(delta_to_decrease, LOWEST_PRIORITY);
+	uint32_t new_priority = curenv->priority + delta_normalized;
+	curenv->priority =
+	        new_priority > LOWEST_PRIORITY ? LOWEST_PRIORITY : new_priority;
+}
+
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -462,6 +477,11 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_ipc_try_send(a1, a2, (void *) a3, a4);
 	case SYS_env_set_pgfault_upcall:
 		return sys_env_set_pgfault_upcall(a1, (void *) a2);
+	case SYS_get_priority:
+		return sys_get_priority();
+	case SYS_decrease_priority:
+		sys_decrease_priority(a1);
+		return 0;
 	case SYS_yield:
 		sys_yield();  // No return
 	default:

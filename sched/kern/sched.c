@@ -7,6 +7,33 @@
 
 void sched_halt(void);
 
+#define BOOST_THRESHOLD 25
+#define YIELD_COUNTER_DECREASE_PRIORITY 5
+
+void
+sched_init()
+{
+	scheduler_info.history_size = 0;
+	scheduler_info.yield_counter = 0;
+}
+
+void
+sched_add_env_to_history(struct Env *env)
+{
+	if (scheduler_info.history_size >= MAX_ENV_HISTORY) {
+		return;
+	}
+
+	scheduler_info.history[scheduler_info.history_size].envid = env->env_id;
+	scheduler_info.history[scheduler_info.history_size].env_runs =
+	        env->sched_runs;
+	scheduler_info.history[scheduler_info.history_size].yield_counter_at_creation =
+	        env->initial_yield_counter;
+	scheduler_info.history[scheduler_info.history_size].yield_counter_at_destruction =
+	        scheduler_info.yield_counter;
+	scheduler_info.history_size++;
+}
+
 static struct Env *
 find_first_env_of_type(int start_index, int end_index, int env_type)
 {
@@ -14,6 +41,25 @@ find_first_env_of_type(int start_index, int end_index, int env_type)
 
 	for (int i = start_index; i <= end_index; i++) {
 		if (envs[i].env_status == env_type) {
+			env = &envs[i];
+			break;
+		}
+	}
+
+	return env;
+}
+
+static struct Env *
+find_first_env_of_type_with_priority(int start_index,
+                                     int end_index,
+                                     int env_type,
+                                     int priority)
+{
+	struct Env *env = NULL;
+
+	for (int i = start_index; i <= end_index; i++) {
+		if (envs[i].env_status == env_type &&
+		    envs[i].priority == priority) {
 			env = &envs[i];
 			break;
 		}
@@ -50,10 +96,104 @@ round_robin_find_next()
 	return next;
 }
 
+static struct Env *
+find_first_env_of_type_prioritized(int start_index, int end_index, int env_type)
+{
+	struct Env *env = NULL;
+
+	for (int i = HIGHEST_PRIORITY; i < LOWEST_PRIORITY; i++) {
+		env = find_first_env_of_type_with_priority(
+		        start_index, end_index, env_type, i);
+		if (env != NULL) {
+			break;
+		}
+	}
+
+	return env;
+}
+
+static struct Env *
+priority_sched_find_next()
+{
+	int start_index = 0;
+
+	// If no env is running currently, return the first runnable env
+	if (curenv == NULL) {
+		return find_first_env_of_type_prioritized(start_index,
+		                                          NENV - 1,
+		                                          ENV_RUNNABLE);
+	}
+
+	start_index = ENVX(curenv->env_id) + 1;
+	struct Env *next = find_first_env_of_type_prioritized(start_index,
+	                                                      NENV - 1,
+	                                                      ENV_RUNNABLE);
+
+	// If not found after curenv
+	if (next == NULL) {
+		next = find_first_env_of_type_prioritized(0,
+		                                          start_index,
+		                                          ENV_RUNNABLE);
+	}
+
+	// If not found before curenv (because the logic is circular)
+	// and curenv is still running
+	if (next == NULL && curenv->env_status == ENV_RUNNING) {
+		next = curenv;
+	}
+
+	return next;
+}
+
+void
+boost_all_envs()
+{
+	for (int i = 0; i < NENV; i++) {
+		envs[i].priority = HIGHEST_PRIORITY;
+		envs[i].sched_runs = 0;
+	}
+}
+
+bool
+should_decrease_priority(struct Env *env)
+{
+	return env->sched_runs % YIELD_COUNTER_DECREASE_PRIORITY == 0;
+}
+
+void
+decrease_env_priority(struct Env *env)
+{
+	if (env->priority < LOWEST_PRIORITY) {
+		env->priority++;
+	}
+}
+
+void
+sched_show_info()
+{
+	cprintf("Sched yield count: %d\n", scheduler_info.yield_counter);
+	for (int i = 0; i < scheduler_info.history_size; i++) {
+		env_info_t *info = &scheduler_info.history[i];
+		cprintf("Process with ENVID: %d started with the scheduler "
+		        "yield counter at %d and finished at %d\n",
+		        info->envid,
+		        info->yield_counter_at_creation,
+		        info->yield_counter_at_destruction);
+	}
+}
+
+bool
+should_boost()
+{
+	return scheduler_info.yield_counter % BOOST_THRESHOLD == 0;
+}
+
 // Choose a user environment to run and run it.
 void
 sched_yield(void)
 {
+	scheduler_info.yield_counter++;
+
 #ifdef SCHED_ROUND_ROBIN
 	//    Implement simple round-robin scheduling.
 	//
@@ -81,17 +221,31 @@ sched_yield(void)
 #endif
 
 #ifdef SCHED_PRIORITIES
-	// Implement simple priorities scheduling.
+	//  Implement simple priorities scheduling.
 	//
-	// Environments now have a "priority" so it must be consider
-	// when the selection is performed.
+	//  Environments now have a "priority" so it must be consider
+	//  when the selection is performed.
 	//
-	// Be careful to not fall in "starvation" such that only one
-	// environment is selected and run every time.
+	//  Be careful to not fall in "starvation" such that only one
+	//  environment is selected and run every time.
 
-	// Your code here - Priorities
+	if (should_boost()) {
+		boost_all_envs();
+	}
+
+	struct Env *next = priority_sched_find_next();
+
+	if (next != NULL) {
+		next->sched_runs++;
+		if (should_decrease_priority(next)) {
+			decrease_env_priority(next);
+		}
+		env_run(next);
+	} else {
+		sched_halt();
+	}
 #endif
-	// Without scheduler, keep runing the last environment while it exists
+	//  Without scheduler, keep runing the last environment while it exists
 	if (curenv) {
 		env_run(curenv);
 	}
@@ -118,6 +272,7 @@ sched_halt(void)
 	}
 	if (i == NENV) {
 		cprintf("No runnable environments in the system!\n");
+		sched_show_info();
 		while (1)
 			monitor(NULL);
 	}

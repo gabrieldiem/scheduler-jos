@@ -112,3 +112,15 @@ sys_ipc_recv(void *dstva)
 {
 	return syscall(SYS_ipc_recv, 1, (uint32_t) dstva, 0, 0, 0, 0);
 }
+
+uint32_t
+sys_get_priority(void)
+{
+	return syscall(SYS_get_priority, 0, 0, 0, 0, 0, 0);
+}
+
+void
+sys_decrease_priority(uint32_t delta_to_decrease)
+{
+	syscall(SYS_decrease_priority, 0, delta_to_decrease, 0, 0, 0, 0);
+}

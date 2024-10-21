@@ -33,4 +33,24 @@ void context_switch(struct Trapframe *tf) __attribute__((noreturn));
 		env_create(ENV_PASTE3(_binary_obj_, x, _start), type);         \
 	} while (0)
 
+#define MAX_ENV_HISTORY 3000
+
+struct env_info {
+	envid_t envid;
+	uint32_t yield_counter_at_creation;
+	uint32_t yield_counter_at_destruction;
+	uint32_t env_runs;
+} typedef env_info_t;
+
+struct sched_info {
+	env_info_t history[MAX_ENV_HISTORY];
+	uint32_t history_size;
+	uint32_t yield_counter;
+} typedef sched_info_t;
+
+sched_info_t scheduler_info;
+
+void sched_init();
+void sched_add_env_to_history(struct Env *env);
+
 #endif  // !JOS_KERN_ENV_H
