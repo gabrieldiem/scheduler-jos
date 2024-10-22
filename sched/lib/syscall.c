@@ -114,13 +114,13 @@ sys_ipc_recv(void *dstva)
 }
 
 uint32_t
-sys_get_priority(void)
+sys_get_currenv_priority(void)
 {
-	return syscall(SYS_get_priority, 0, 0, 0, 0, 0, 0);
+	return syscall(SYS_get_currenv_priority, 0, 0, 0, 0, 0, 0);
 }
 
 void
-sys_decrease_priority(uint32_t delta_to_decrease)
+sys_decrease_currenv_priority(uint32_t delta_to_decrease)
 {
-	syscall(SYS_decrease_priority, 0, delta_to_decrease, 0, 0, 0, 0);
+	syscall(SYS_decrease_currenv_priority, 0, delta_to_decrease, 0, 0, 0, 0);
 }

@@ -16,8 +16,8 @@ enum {
 	SYS_yield,
 	SYS_ipc_try_send,
 	SYS_ipc_recv,
-	SYS_get_priority,
-	SYS_decrease_priority,
+	SYS_get_currenv_priority,
+	SYS_decrease_currenv_priority,
 	NSYSCALLS
 };
 

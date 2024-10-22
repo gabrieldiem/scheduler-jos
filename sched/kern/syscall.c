@@ -430,13 +430,13 @@ sys_ipc_recv(void *dstva)
 }
 
 static uint32_t
-sys_get_priority(void)
+sys_get_currenv_priority(void)
 {
 	return curenv->env_priority;
 }
 
 static void
-sys_decrease_priority(uint32_t delta_to_decrease)
+sys_decrease_currenv_priority(uint32_t delta_to_decrease)
 {
 	uint32_t delta_normalized = MIN(delta_to_decrease, LOWEST_PRIORITY);
 	uint32_t new_priority = curenv->env_priority + delta_normalized;
@@ -477,10 +477,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_ipc_try_send(a1, a2, (void *) a3, a4);
 	case SYS_env_set_pgfault_upcall:
 		return sys_env_set_pgfault_upcall(a1, (void *) a2);
-	case SYS_get_priority:
-		return sys_get_priority();
-	case SYS_decrease_priority:
-		sys_decrease_priority(a1);
+	case SYS_get_currenv_priority:
+		return sys_get_currenv_priority();
+	case SYS_decrease_currenv_priority:
+		sys_decrease_currenv_priority(a1);
 		return 0;
 	case SYS_yield:
 		sys_yield();  // No return
