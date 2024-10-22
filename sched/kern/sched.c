@@ -6,34 +6,35 @@
 #include <kern/monitor.h>
 #include <kern/sched.h>
 
-void sched_halt(void);
-
 #define BOOST_THRESHOLD 25
 #define YIELD_COUNTER_DECREASE_PRIORITY 5
+
+void sched_halt(void);
 
 void
 sched_init()
 {
-	scheduler_info.history_size = 0;
+	scheduler_info.env_history_size = 0;
 	scheduler_info.yield_counter = 0;
 }
 
 void
 sched_add_env_data_to_history(struct Env *env)
 {
-	if (scheduler_info.history_size >= MAX_ENV_HISTORY) {
+	if (scheduler_info.env_history_size >= MAX_ENV_HISTORY) {
 		return;
 	}
 
 	env_info_t *history_entry =
-	        &scheduler_info.history[scheduler_info.history_size];
+	        &scheduler_info.env_history[scheduler_info.env_history_size];
+	scheduler_info.env_history_size++;
+
 	history_entry->envid = env->env_id;
-	history_entry->env_runs = env->env_sched_runs;
+	history_entry->env_runs = env->env_runs;
+	history_entry->env_sched_runs = env->env_sched_runs;
 	history_entry->yield_counter_at_creation =
 	        env->env_yield_counter_at_creation;
 	history_entry->yield_counter_at_destruction = scheduler_info.yield_counter;
-
-	scheduler_info.history_size++;
 }
 
 static struct Env *
@@ -147,7 +148,7 @@ priority_sched_find_next()
 	return next;
 }
 
-void
+static void
 boost_all_envs()
 {
 	for (int i = 0; i < NENV; i++) {
@@ -156,13 +157,13 @@ boost_all_envs()
 	}
 }
 
-bool
+static bool
 should_decrease_priority(struct Env *env)
 {
 	return env->env_sched_runs % YIELD_COUNTER_DECREASE_PRIORITY == 0;
 }
 
-void
+static void
 decrease_env_priority(struct Env *env)
 {
 	if (env->env_priority < LOWEST_PRIORITY) {
@@ -170,21 +171,36 @@ decrease_env_priority(struct Env *env)
 	}
 }
 
-void
-sched_show_info()
+static void
+sched_history_entry_show_info(env_info_t *history_entry)
 {
-	cprintf("Sched yield count: %d\n", scheduler_info.yield_counter);
-	for (int i = 0; i < scheduler_info.history_size; i++) {
-		env_info_t *info = &scheduler_info.history[i];
-		cprintf("Process with ENVID: %d started with the scheduler "
-		        "yield counter at %d and finished at %d\n",
-		        info->envid,
-		        info->yield_counter_at_creation,
-		        info->yield_counter_at_destruction);
-	}
+	cprintf("Environment with ENVID: %012x started with the scheduler "
+	        "yield counter at %d and finished at %d. It run %d sched_yield "
+	        "cycles and %d env_run cycles.\n",
+	        history_entry->envid,
+	        history_entry->yield_counter_at_creation,
+	        history_entry->yield_counter_at_destruction,
+	        history_entry->env_runs,
+	        history_entry->env_sched_runs);
 }
 
-bool
+static void
+sched_show_info()
+{
+	cprintf("\nExecution was yielded to the scheduler %d times.\n",
+	        scheduler_info.yield_counter);
+
+	cprintf("Information about the last %d environments executed:\n",
+	        scheduler_info.env_history_size);
+
+	for (int i = 0; i < scheduler_info.env_history_size; i++) {
+		sched_history_entry_show_info(&scheduler_info.env_history[i]);
+	}
+
+	cprintf("\n");
+}
+
+static bool
 should_boost()
 {
 	return scheduler_info.yield_counter % BOOST_THRESHOLD == 0;
@@ -195,6 +211,7 @@ void
 sched_yield(void)
 {
 	scheduler_info.yield_counter++;
+	struct Env *next_env = NULL;
 
 #ifdef SCHED_ROUND_ROBIN
 	//    Implement simple round-robin scheduling.
@@ -212,10 +229,11 @@ sched_yield(void)
 	//    no runnable environments, simply drop through to the code
 	//    below to halt the cpu.
 
-	struct Env *next = round_robin_find_next();
+	next_env = round_robin_find_next();
 
-	if (next != NULL) {
-		env_run(next);
+	if (next_env != NULL) {
+		next_env->env_sched_runs++;
+		env_run(next_env);
 	}
 
 #endif
@@ -233,14 +251,14 @@ sched_yield(void)
 		boost_all_envs();
 	}
 
-	struct Env *next = priority_sched_find_next();
+	next_env = priority_sched_find_next();
 
-	if (next != NULL) {
-		next->sched_runs++;
-		if (should_decrease_priority(next)) {
-			decrease_env_priority(next);
+	if (next_env != NULL) {
+		next_env->env_sched_runs++;
+		if (should_decrease_priority(next_env)) {
+			decrease_env_priority(next_env);
 		}
-		env_run(next);
+		env_run(next_env);
 	}
 #endif
 

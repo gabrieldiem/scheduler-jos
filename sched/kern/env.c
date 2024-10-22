@@ -120,6 +120,7 @@ env_init(void)
 		envs[i].env_status = ENV_FREE;
 		envs[i].env_link = (envs + i + 1);
 		envs[i].env_priority = HIGHEST_PRIORITY;
+		envs[i].env_runs = 0;
 		envs[i].env_sched_runs = 0;
 		envs[i].env_yield_counter_at_creation = 0;
 	}
