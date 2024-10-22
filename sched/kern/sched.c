@@ -4,6 +4,7 @@
 #include <kern/env.h>
 #include <kern/pmap.h>
 #include <kern/monitor.h>
+#include <kern/sched.h>
 
 void sched_halt(void);
 
@@ -18,19 +19,20 @@ sched_init()
 }
 
 void
-sched_add_env_to_history(struct Env *env)
+sched_add_env_data_to_history(struct Env *env)
 {
 	if (scheduler_info.history_size >= MAX_ENV_HISTORY) {
 		return;
 	}
 
-	scheduler_info.history[scheduler_info.history_size].envid = env->env_id;
-	scheduler_info.history[scheduler_info.history_size].env_runs =
-	        env->sched_runs;
-	scheduler_info.history[scheduler_info.history_size].yield_counter_at_creation =
-	        env->initial_yield_counter;
-	scheduler_info.history[scheduler_info.history_size].yield_counter_at_destruction =
-	        scheduler_info.yield_counter;
+	env_info_t *history_entry =
+	        &scheduler_info.history[scheduler_info.history_size];
+	history_entry->envid = env->env_id;
+	history_entry->env_runs = env->env_sched_runs;
+	history_entry->yield_counter_at_creation =
+	        env->env_yield_counter_at_creation;
+	history_entry->yield_counter_at_destruction = scheduler_info.yield_counter;
+
 	scheduler_info.history_size++;
 }
 
@@ -59,7 +61,7 @@ find_first_env_of_type_with_priority(int start_index,
 
 	for (int i = start_index; i <= end_index; i++) {
 		if (envs[i].env_status == env_type &&
-		    envs[i].priority == priority) {
+		    envs[i].env_priority == priority) {
 			env = &envs[i];
 			break;
 		}
@@ -149,22 +151,22 @@ void
 boost_all_envs()
 {
 	for (int i = 0; i < NENV; i++) {
-		envs[i].priority = HIGHEST_PRIORITY;
-		envs[i].sched_runs = 0;
+		envs[i].env_priority = HIGHEST_PRIORITY;
+		envs[i].env_sched_runs = 0;
 	}
 }
 
 bool
 should_decrease_priority(struct Env *env)
 {
-	return env->sched_runs % YIELD_COUNTER_DECREASE_PRIORITY == 0;
+	return env->env_sched_runs % YIELD_COUNTER_DECREASE_PRIORITY == 0;
 }
 
 void
 decrease_env_priority(struct Env *env)
 {
-	if (env->priority < LOWEST_PRIORITY) {
-		env->priority++;
+	if (env->env_priority < LOWEST_PRIORITY) {
+		env->env_priority++;
 	}
 }
 
@@ -214,8 +216,6 @@ sched_yield(void)
 
 	if (next != NULL) {
 		env_run(next);
-	} else {
-		sched_halt();
 	}
 
 #endif
@@ -241,17 +241,12 @@ sched_yield(void)
 			decrease_env_priority(next);
 		}
 		env_run(next);
-	} else {
-		sched_halt();
 	}
 #endif
-	//  Without scheduler, keep runing the last environment while it exists
-	if (curenv) {
-		env_run(curenv);
-	}
 
 	// sched_halt never returns
 	sched_halt();
+	panic("Panic: sched_halt should have never returned"); /* mostly to placate the compiler */
 }
 
 // Halt this CPU when there is nothing to do. Wait until the

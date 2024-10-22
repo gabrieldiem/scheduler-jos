@@ -66,9 +66,9 @@ struct Env {
 	envid_t env_ipc_from;    // envid of the sender
 	int env_ipc_perm;        // Perm of page mapping received
 
-	uint32_t priority;
-	uint32_t sched_runs;
-	uint32_t initial_yield_counter;
+	uint32_t env_priority;
+	uint32_t env_sched_runs;
+	uint32_t env_yield_counter_at_creation;
 };
 
 #endif  // !JOS_INC_ENV_H

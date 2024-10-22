@@ -119,9 +119,9 @@ env_init(void)
 		envs[i].env_id = 0;
 		envs[i].env_status = ENV_FREE;
 		envs[i].env_link = (envs + i + 1);
-		envs[i].priority = HIGHEST_PRIORITY;
-		envs[i].sched_runs = 0;
-		envs[i].initial_yield_counter = 0;
+		envs[i].env_priority = HIGHEST_PRIORITY;
+		envs[i].env_sched_runs = 0;
+		envs[i].env_yield_counter_at_creation = 0;
 	}
 	envs[NENV - 1].env_link = NULL;
 	env_free_list = envs;
@@ -230,9 +230,9 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	e->env_type = ENV_TYPE_USER;
 	e->env_status = ENV_RUNNABLE;
 	e->env_runs = 0;
-	e->sched_runs = 0;
-	e->initial_yield_counter = scheduler_info.yield_counter;
-	e->priority = HIGHEST_PRIORITY;
+	e->env_sched_runs = 0;
+	e->env_yield_counter_at_creation = scheduler_info.yield_counter;
+	e->env_priority = HIGHEST_PRIORITY;
 
 	// Clear out all the saved register state,
 	// to prevent the register values
@@ -416,7 +416,7 @@ env_free(struct Env *e)
 	uint32_t pdeno, pteno;
 	physaddr_t pa;
 
-	sched_add_env_to_history(e);
+	sched_add_env_data_to_history(e);
 
 	// If freeing the current environment, switch to kern_pgdir
 	// before freeing the page directory, just in case the page
@@ -543,5 +543,5 @@ env_run(struct Env *e)
 	//	   environment.
 	context_switch(&e->env_tf);
 
-	panic("env_run not yet implemented"); /* mostly to placate the compiler */
+	panic("Panic: context_switch should have never returned"); /* mostly to placate the compiler */
 }

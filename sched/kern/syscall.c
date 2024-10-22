@@ -432,15 +432,15 @@ sys_ipc_recv(void *dstva)
 static uint32_t
 sys_get_priority(void)
 {
-	return curenv->priority;
+	return curenv->env_priority;
 }
 
 static void
 sys_decrease_priority(uint32_t delta_to_decrease)
 {
 	uint32_t delta_normalized = MIN(delta_to_decrease, LOWEST_PRIORITY);
-	uint32_t new_priority = curenv->priority + delta_normalized;
-	curenv->priority =
+	uint32_t new_priority = curenv->env_priority + delta_normalized;
+	curenv->env_priority =
 	        new_priority > LOWEST_PRIORITY ? LOWEST_PRIORITY : new_priority;
 }
 
