@@ -121,7 +121,8 @@ env_init(void)
 		envs[i].env_link = (envs + i + 1);
 		envs[i].env_priority = HIGHEST_PRIORITY;
 		envs[i].env_runs = 0;
-		envs[i].env_sched_runs = 0;
+		envs[i].env_sched_runs_current = 0;
+		envs[i].env_sched_runs_total = 0;
 		envs[i].env_yield_counter_at_creation = 0;
 	}
 	envs[NENV - 1].env_link = NULL;
@@ -231,7 +232,8 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	e->env_type = ENV_TYPE_USER;
 	e->env_status = ENV_RUNNABLE;
 	e->env_runs = 0;
-	e->env_sched_runs = 0;
+	e->env_sched_runs_current = 0;
+	e->env_sched_runs_total = 0;
 	e->env_yield_counter_at_creation = scheduler_info.yield_counter;
 	e->env_priority = HIGHEST_PRIORITY;
 

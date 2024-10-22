@@ -67,7 +67,8 @@ struct Env {
 	int env_ipc_perm;        // Perm of page mapping received
 
 	uint32_t env_priority;
-	uint32_t env_sched_runs;
+	uint32_t env_sched_runs_current;
+	uint32_t env_sched_runs_total;
 	uint32_t env_yield_counter_at_creation;
 };
 

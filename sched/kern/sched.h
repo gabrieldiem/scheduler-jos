@@ -13,13 +13,16 @@ struct env_info {
 	uint32_t yield_counter_at_creation;
 	uint32_t yield_counter_at_destruction;
 	uint32_t env_runs;
-	uint32_t env_sched_runs;
+	uint32_t env_sched_runs_total;
 } typedef env_info_t;
 
 struct sched_info {
+	uint32_t yield_counter;
 	env_info_t env_history[MAX_ENV_HISTORY];
 	uint32_t env_history_size;
-	uint32_t yield_counter;
+	/* head and tail to make a circular array and overwrite old elements */
+	uint32_t env_history_head;
+	uint32_t env_history_tail;
 } typedef sched_info_t;
 
 sched_info_t scheduler_info;

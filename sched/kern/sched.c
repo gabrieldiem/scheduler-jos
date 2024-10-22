@@ -14,24 +14,30 @@ void sched_halt(void);
 void
 sched_init()
 {
-	scheduler_info.env_history_size = 0;
 	scheduler_info.yield_counter = 0;
+	scheduler_info.env_history_size = 0;
+	scheduler_info.env_history_head = 0;
+	scheduler_info.env_history_tail = 0;
 }
 
 void
 sched_add_env_data_to_history(struct Env *env)
 {
-	if (scheduler_info.env_history_size >= MAX_ENV_HISTORY) {
-		return;
+	if (scheduler_info.env_history_size == MAX_ENV_HISTORY) {
+		scheduler_info.env_history_tail =
+		        (scheduler_info.env_history_tail + 1) % MAX_ENV_HISTORY;
+	} else {
+		scheduler_info.env_history_size++;
 	}
 
 	env_info_t *history_entry =
-	        &scheduler_info.env_history[scheduler_info.env_history_size];
-	scheduler_info.env_history_size++;
+	        &scheduler_info.env_history[scheduler_info.env_history_head];
+	scheduler_info.env_history_head =
+	        (scheduler_info.env_history_head + 1) % MAX_ENV_HISTORY;
 
 	history_entry->envid = env->env_id;
 	history_entry->env_runs = env->env_runs;
-	history_entry->env_sched_runs = env->env_sched_runs;
+	history_entry->env_sched_runs_total = env->env_sched_runs_total;
 	history_entry->yield_counter_at_creation =
 	        env->env_yield_counter_at_creation;
 	history_entry->yield_counter_at_destruction = scheduler_info.yield_counter;
@@ -44,25 +50,6 @@ find_first_env_of_type(int start_index, int end_index, int env_type)
 
 	for (int i = start_index; i <= end_index; i++) {
 		if (envs[i].env_status == env_type) {
-			env = &envs[i];
-			break;
-		}
-	}
-
-	return env;
-}
-
-static struct Env *
-find_first_env_of_type_with_priority(int start_index,
-                                     int end_index,
-                                     int env_type,
-                                     int priority)
-{
-	struct Env *env = NULL;
-
-	for (int i = start_index; i <= end_index; i++) {
-		if (envs[i].env_status == env_type &&
-		    envs[i].env_priority == priority) {
 			env = &envs[i];
 			break;
 		}
@@ -100,14 +87,25 @@ round_robin_find_next()
 }
 
 static struct Env *
-find_first_env_of_type_prioritized(int start_index, int end_index, int env_type)
+find_first_env_of_type_of_highest_priority_and_scan(int start_index,
+                                                    int end_index,
+                                                    int env_type,
+                                                    struct Env **first_env_by_priority)
 {
 	struct Env *env = NULL;
 
-	for (int i = HIGHEST_PRIORITY; i < LOWEST_PRIORITY; i++) {
-		env = find_first_env_of_type_with_priority(
-		        start_index, end_index, env_type, i);
-		if (env != NULL) {
+	for (int i = start_index; i <= end_index; i++) {
+		struct Env *i_env = &envs[i];
+		if (i_env->env_status != env_type) {
+			continue;
+		}
+
+		if (first_env_by_priority[i_env->env_priority] == NULL) {
+			first_env_by_priority[i_env->env_priority] = i_env;
+		}
+
+		if (i_env->env_priority == HIGHEST_PRIORITY) {
+			env = i_env;
 			break;
 		}
 	}
@@ -116,31 +114,51 @@ find_first_env_of_type_prioritized(int start_index, int end_index, int env_type)
 }
 
 static struct Env *
+find_first_env_of_type_of_highest_priority(int start_index, int env_type)
+{
+	struct Env *env_selected = NULL;
+	struct Env *first_env_by_priority[LOWEST_PRIORITY + 1] = { NULL };
+
+	env_selected = find_first_env_of_type_of_highest_priority_and_scan(
+	        start_index, NENV - 1, env_type, first_env_by_priority);
+
+	if (env_selected != NULL) {
+		return env_selected;
+	}
+
+	env_selected = find_first_env_of_type_of_highest_priority_and_scan(
+	        0, start_index, env_type, first_env_by_priority);
+
+	if (env_selected != NULL) {
+		return env_selected;
+	}
+
+	for (int i = HIGHEST_PRIORITY; i < LOWEST_PRIORITY + 1; i++) {
+		if (first_env_by_priority[i] != NULL) {
+			env_selected = first_env_by_priority[i];
+			break;
+		}
+	}
+
+	return env_selected;
+}
+
+static struct Env *
 priority_sched_find_next()
 {
 	int start_index = 0;
 
-	// If no env is running currently, return the first runnable env
+	// If no env is running currently, return the first runnable env of highest priority
 	if (curenv == NULL) {
-		return find_first_env_of_type_prioritized(start_index,
-		                                          NENV - 1,
-		                                          ENV_RUNNABLE);
+		return find_first_env_of_type_of_highest_priority(start_index,
+		                                                  ENV_RUNNABLE);
 	}
 
 	start_index = ENVX(curenv->env_id) + 1;
-	struct Env *next = find_first_env_of_type_prioritized(start_index,
-	                                                      NENV - 1,
-	                                                      ENV_RUNNABLE);
+	struct Env *next =
+	        find_first_env_of_type_of_highest_priority(start_index,
+	                                                   ENV_RUNNABLE);
 
-	// If not found after curenv
-	if (next == NULL) {
-		next = find_first_env_of_type_prioritized(0,
-		                                          start_index,
-		                                          ENV_RUNNABLE);
-	}
-
-	// If not found before curenv (because the logic is circular)
-	// and curenv is still running
 	if (next == NULL && curenv->env_status == ENV_RUNNING) {
 		next = curenv;
 	}
@@ -153,14 +171,14 @@ boost_all_envs()
 {
 	for (int i = 0; i < NENV; i++) {
 		envs[i].env_priority = HIGHEST_PRIORITY;
-		envs[i].env_sched_runs = 0;
+		envs[i].env_sched_runs_current = 0;
 	}
 }
 
 static bool
 should_decrease_priority(struct Env *env)
 {
-	return env->env_sched_runs % YIELD_COUNTER_DECREASE_PRIORITY == 0;
+	return env->env_sched_runs_current % YIELD_COUNTER_DECREASE_PRIORITY == 0;
 }
 
 static void
@@ -175,13 +193,14 @@ static void
 sched_history_entry_show_info(env_info_t *history_entry)
 {
 	cprintf("Environment with ENVID: %012x started with the scheduler "
-	        "yield counter at %d and finished at %d. It run %d sched_yield "
-	        "cycles and %d env_run cycles.\n",
+	        "yield counter at %lu and finished at %lu. It run %lu "
+	        "sched_yield "
+	        "cycles and %lu env_run cycles.\n",
 	        history_entry->envid,
 	        history_entry->yield_counter_at_creation,
 	        history_entry->yield_counter_at_destruction,
-	        history_entry->env_runs,
-	        history_entry->env_sched_runs);
+	        history_entry->env_sched_runs_total,
+	        history_entry->env_runs);
 }
 
 static void
@@ -190,11 +209,21 @@ sched_show_info()
 	cprintf("\nExecution was yielded to the scheduler %d times.\n",
 	        scheduler_info.yield_counter);
 
+	if (scheduler_info.env_history_size == MAX_ENV_HISTORY) {
+		cprintf("The env history was maxed out at %d entries so the "
+		        "first entry is not the first ever executed "
+		        "environment but rather the last %d-th environment.\n",
+		        MAX_ENV_HISTORY,
+		        MAX_ENV_HISTORY);
+	}
+
 	cprintf("Information about the last %d environments executed:\n",
 	        scheduler_info.env_history_size);
 
 	for (int i = 0; i < scheduler_info.env_history_size; i++) {
-		sched_history_entry_show_info(&scheduler_info.env_history[i]);
+		int index =
+		        (scheduler_info.env_history_tail + i) % MAX_ENV_HISTORY;
+		sched_history_entry_show_info(&scheduler_info.env_history[index]);
 	}
 
 	cprintf("\n");
@@ -232,7 +261,8 @@ sched_yield(void)
 	next_env = round_robin_find_next();
 
 	if (next_env != NULL) {
-		next_env->env_sched_runs++;
+		next_env->env_sched_runs_current++;
+		next_env->env_sched_runs_total++;
 		env_run(next_env);
 	}
 
@@ -254,7 +284,8 @@ sched_yield(void)
 	next_env = priority_sched_find_next();
 
 	if (next_env != NULL) {
-		next_env->env_sched_runs++;
+		next_env->env_sched_runs_current++;
+		next_env->env_sched_runs_total++;
 		if (should_decrease_priority(next_env)) {
 			decrease_env_priority(next_env);
 		}
