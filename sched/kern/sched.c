@@ -61,14 +61,12 @@ find_first_env_of_type(int start_index, int end_index, int env_type)
 static struct Env *
 round_robin_find_next()
 {
-	int start_index = 0;
-
 	// If no env is running currently, return the first runnable env
 	if (curenv == NULL) {
-		return find_first_env_of_type(start_index, NENV - 1, ENV_RUNNABLE);
+		return find_first_env_of_type(0, NENV - 1, ENV_RUNNABLE);
 	}
 
-	start_index = ENVX(curenv->env_id) + 1;
+	int start_index = ENVX(curenv->env_id) + 1;
 	struct Env *next =
 	        find_first_env_of_type(start_index, NENV - 1, ENV_RUNNABLE);
 
@@ -100,6 +98,7 @@ find_first_env_of_type_of_highest_priority_and_scan(int start_index,
 			continue;
 		}
 
+		// Save scanned values from all priorities just the first time
 		if (first_env_by_priority[i_env->env_priority] == NULL) {
 			first_env_by_priority[i_env->env_priority] = i_env;
 		}
@@ -133,6 +132,11 @@ find_first_env_of_type_of_highest_priority(int start_index, int env_type)
 		return env_selected;
 	}
 
+	/*
+	 *  If there was no HIGHEST_PRIORITY env runnable in the whole envs
+	 * array, iterate through the references saved throughout the iteration
+	 * to return the highest priority first encountered runnable env
+	 */
 	for (int i = HIGHEST_PRIORITY; i < LOWEST_PRIORITY + 1; i++) {
 		if (first_env_by_priority[i] != NULL) {
 			env_selected = first_env_by_priority[i];
