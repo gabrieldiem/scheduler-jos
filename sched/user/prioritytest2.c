@@ -16,7 +16,7 @@ umain(int argc, char **argv)
 		for (int i = 0; i < 500; i++) {
 			priority = sys_get_currenv_priority();
 			cprintf("Soy el hijo y mi prioridad es: %d\n", priority);
-			sys_yield();
+			// sys_yield();
 		}
 	} else {
 		/*for (int i = 0; i < 500000; i++) {
