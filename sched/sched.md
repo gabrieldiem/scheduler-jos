@@ -4,6 +4,11 @@
 
  <!-- Guía para tamaños de las imágenes: 1 línea de texto son 20px. Por ejemplo, para 4 líneas de texto se tendría 4*20 = 80 => height="80px" -->
 
+Tabla de contenidos:
+
+1. [Visualización del cambio de contexto](#Visualización-del-cambio-de-contexto)
+2. [Implementación de scheduler con prioridades](#Implementación-de-scheduler-con-prioridades)
+
 ### Visualización del cambio de contexto
 
 Se comienza el análisis de ejecución justo antes de ingresar a la función `context_switch`:
@@ -159,4 +164,26 @@ La ejecución finaliza exitosamente:
 
 ### Implementación de scheduler con prioridades
 
-Programas de test: `prioritytest1.c`
+#### Políticas
+
+El scheduler con prioridades posee 5 niveles de prioridad, siendo 0 la prioridad más alta y 4 la prioridad más baja.
+
+Se tiene una política de boost de 25 ejecuciones, lo que significa que cada 25 veces que se le cede la ejecución al scheduler se elevan todas las prioridades a la más alta, esto es independiente de la cantidad de procesos que están corriendo al mismo tiempo.
+
+La política de disminución de prioridad es de 5 ejecuciones, lo que significa que cuando un proceso en particular es elegido 5 veces (independientemente de que se hayan ejecutado otros procesos en el medio) se le disminuye 1 nivel de prioridad, en caso de que ya esté en el mínimo, permanecerá ahí.
+
+El proceso/environment seleccionado será el subsecuente al proceso que esté corriendo al momento, en estado `RUNNABLE` y con la mayor prioridad.
+
+#### Implementación
+
+El `struct Env` posee un campo `env_priority` que señala el nivel de prioridad explicado anteriormente, y un campo `env_sched_runs_current` que lleva la cuenta desde el último boost de las veces que el scheduler le decidió ejecutar ese proceso, así como un campo `env_sched_runs_total` que lleva la cuenta desde la creación del environment.
+
+Apenas se cede la ejecución al scheduler, se verifica si es necesario realizar un boost comparando contra un contador `yield_counter` almacenado como información de estadística del scheduler mismo, este aumenta en 1 cada vez que se le cede la ejecución. Si se llegó al threshold para boostear, se recorre el array `envs` para setear todos los campos `env_priority` en `0`, y también se reinicia el `env_sched_runs_current`.
+
+Para la selección del siguiente environment a correr, el scheduler no posee estructuras de datos auxiliares de tiempo de vida permanente. Cuando se hace la búsqueda, se itera sobre el array `envs` hasta encontrar el primer environment `RUNNABLE` de prioridad máxima, además se guardan 5 punteros en un array auxiliar que se actualizar elemento a elemento durante la iteración para representar el primer elemento `RUNNABLE` de la prioridad correspondiente al índice (es decir que el índice `0` es la prioridad `0`, el índice `1` es la prioridad `1` y así). Esto permite que si no se encontró un elemento de prioridad máxima, se podrá iterar sobre el array auxiliar de 5 elementos para verificar si existe un environment `RUNNABLE` de otra prioridad, que sea máxima para el subconjunto de los runnables. De no encontrar ninguno `RUNNABLE` se seguirá ejecutando el proceso que ya se estaba ejecutando, si está en estado `RUNNING`.
+
+Al iterar el array `envs` para seleccionar cuál environment se ejecutará, primero se evalúan los elementos subsiguientes al proceso que esté corriendo al momento, y luego, de forma circular, se evalúan desde el primer elemento hasta el proceso actual.
+
+Si no se pudo seleccionar ningún proceso para correr, se llama a `sched_halt`.
+
+Si sí se pudo seleccionar un proceso para correr, se le aumenta en 1 sus env_sched_runs (total y current) y antes de ejecutarlo con `env_run` se verifica si es necesario disminuir la prioridad del environment, esto se hace comparando el `env_sched_runs_current` contra el valor de la política de disminución establecida (5 elecciones del scheduler). Si es necesario disminuir la prioridad, se incrementa en 1 el campo `env_priority` del `struct Env`, recordando que que mientras más alto el valor numérico, menor es su nivel de prioridad (<i>lower is better</i>), si la prioridad ya es mínima, se deja como está.
