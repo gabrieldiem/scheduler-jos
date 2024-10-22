@@ -150,15 +150,12 @@ find_first_env_of_type_of_highest_priority(int start_index, int env_type)
 static struct Env *
 priority_sched_find_next()
 {
-	int start_index = 0;
-
 	// If no env is running currently, return the first runnable env of highest priority
 	if (curenv == NULL) {
-		return find_first_env_of_type_of_highest_priority(start_index,
-		                                                  ENV_RUNNABLE);
+		return find_first_env_of_type_of_highest_priority(0, ENV_RUNNABLE);
 	}
 
-	start_index = ENVX(curenv->env_id) + 1;
+	int start_index = ENVX(curenv->env_id) + 1;
 	struct Env *next =
 	        find_first_env_of_type_of_highest_priority(start_index,
 	                                                   ENV_RUNNABLE);
