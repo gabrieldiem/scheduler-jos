@@ -18,11 +18,14 @@ sched_init()
 	scheduler_info.env_history_size = 0;
 	scheduler_info.env_history_head = 0;
 	scheduler_info.env_history_tail = 0;
+	scheduler_info.last_env_destroyed_index = 0;
 }
 
 void
 sched_add_env_data_to_history(struct Env *env)
 {
+	scheduler_info.last_env_destroyed_index = ENVX(env->env_id);
+
 	if (scheduler_info.env_history_size == MAX_ENV_HISTORY) {
 		scheduler_info.env_history_tail =
 		        (scheduler_info.env_history_tail + 1) % MAX_ENV_HISTORY;
@@ -58,25 +61,58 @@ find_first_env_of_type(int start_index, int end_index, int env_type)
 	return env;
 }
 
+static int
+get_latest_env_index_saved_to_history()
+{
+	if (scheduler_info.last_env_destroyed_index == NENV - 1) {
+		scheduler_info.last_env_destroyed_index = 0;
+	}
+
+	return scheduler_info.last_env_destroyed_index;
+}
+
+static bool
+is_first_run()
+{
+	return curenv == NULL && scheduler_info.env_history_size == 0;
+}
+
+static bool
+did_process_just_finished()
+{
+	return curenv == NULL && scheduler_info.env_history_size > 0;
+}
+
 static struct Env *
 round_robin_find_next()
 {
 	// If no env is running currently, return the first runnable env
-	if (curenv == NULL) {
+	if (is_first_run()) {
 		return find_first_env_of_type(0, NENV - 1, ENV_RUNNABLE);
 	}
 
-	int start_index = ENVX(curenv->env_id) + 1;
+	int start_index = 0;
+
+	if (did_process_just_finished()) {
+		start_index = get_latest_env_index_saved_to_history() + 1;
+	} else {
+		start_index = ENVX(curenv->env_id) + 1;
+	}
+
+	start_index = MIN(start_index, NENV - 1);
+
 	struct Env *next =
 	        find_first_env_of_type(start_index, NENV - 1, ENV_RUNNABLE);
 
-	// If not found after curenv
 	if (next == NULL) {
 		next = find_first_env_of_type(0, start_index, ENV_RUNNABLE);
 	}
 
-	// If not found before curenv (because the logic is circular)
-	// and curenv is still running
+	// There is not a runnable process in envs nor curenv is alive
+	if (next == NULL && curenv == NULL) {
+		return NULL;
+	}
+
 	if (next == NULL && curenv->env_status == ENV_RUNNING) {
 		next = curenv;
 	}

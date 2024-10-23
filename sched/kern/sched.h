@@ -23,6 +23,7 @@ struct sched_info {
 	/* head and tail to make a circular array and overwrite old elements */
 	uint32_t env_history_head;
 	uint32_t env_history_tail;
+	uint32_t last_env_destroyed_index;
 } typedef sched_info_t;
 
 sched_info_t scheduler_info;
