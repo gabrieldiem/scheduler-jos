@@ -151,6 +151,7 @@ sys_exofork(void)
 	newenv->env_status = ENV_NOT_RUNNABLE;
 	newenv->env_tf = curenv->env_tf;
 	newenv->env_tf.tf_regs.reg_eax = 0;
+	newenv->env_priority = curenv->env_priority;
 
 	return newenv->env_id;
 	// panic("sys_exofork not implemented");

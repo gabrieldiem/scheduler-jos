@@ -174,6 +174,8 @@ La política de disminución de prioridad es de 5 ejecuciones, lo que significa 
 
 El proceso/environment seleccionado será el subsecuente al proceso que esté corriendo al momento, en estado `RUNNABLE` y con la mayor prioridad.
 
+Un nuevo proceso producto de un fork tendrá la misma prioridad que el padre (el caller de fork).
+
 #### Implementación
 
 El `struct Env` posee un campo `env_priority` que señala el nivel de prioridad explicado anteriormente, y un campo `env_sched_runs_current` que lleva la cuenta desde el último boost de las veces que el scheduler le decidió ejecutar ese proceso, así como un campo `env_sched_runs_total` que lleva la cuenta desde la creación del environment.
@@ -187,3 +189,5 @@ Al iterar el array `envs` para seleccionar cuál environment se ejecutará, prim
 Si no se pudo seleccionar ningún proceso para correr, se llama a `sched_halt`.
 
 Si sí se pudo seleccionar un proceso para correr, se le aumenta en 1 sus env_sched_runs (total y current) y antes de ejecutarlo con `env_run` se verifica si es necesario disminuir la prioridad del environment, esto se hace comparando el `env_sched_runs_current` contra el valor de la política de disminución establecida (5 elecciones del scheduler). Si es necesario disminuir la prioridad, se incrementa en 1 el campo `env_priority` del `struct Env`, recordando que que mientras más alto el valor numérico, menor es su nivel de prioridad (<i>lower is better</i>), si la prioridad ya es mínima, se deja como está.
+
+Para que un proceso hijo tenga la misma prioridad que el padre, en la syscall `sys_exofork` se realiza la igualación de prioridades, permitiendo que todas las versiones de wrappers de tipo fork tengan esta característica.
