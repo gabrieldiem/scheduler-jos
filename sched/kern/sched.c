@@ -173,7 +173,7 @@ find_first_env_of_type_of_highest_priority(int start_index, int env_type)
 	 * array, iterate through the references saved throughout the iteration
 	 * to return the highest priority first encountered runnable env
 	 */
-	for (int i = HIGHEST_PRIORITY; i < LOWEST_PRIORITY + 1; i++) {
+	for (int i = HIGHEST_PRIORITY; i <= LOWEST_PRIORITY; i++) {
 		if (first_env_by_priority[i] != NULL) {
 			env_selected = first_env_by_priority[i];
 			break;
@@ -187,14 +187,28 @@ static struct Env *
 priority_sched_find_next()
 {
 	// If no env is running currently, return the first runnable env of highest priority
-	if (curenv == NULL) {
+	if (is_first_run()) {
 		return find_first_env_of_type_of_highest_priority(0, ENV_RUNNABLE);
 	}
 
-	int start_index = ENVX(curenv->env_id) + 1;
+	int start_index = 0;
+
+	if (did_process_just_finished()) {
+		start_index = get_latest_env_index_saved_to_history() + 1;
+	} else {
+		start_index = ENVX(curenv->env_id) + 1;
+	}
+
+	start_index = MIN(start_index, NENV - 1);
+
 	struct Env *next =
 	        find_first_env_of_type_of_highest_priority(start_index,
 	                                                   ENV_RUNNABLE);
+
+	// There is not a runnable process in envs nor curenv is alive
+	if (next == NULL && curenv == NULL) {
+		return NULL;
+	}
 
 	if (next == NULL && curenv->env_status == ENV_RUNNING) {
 		next = curenv;
