@@ -58,7 +58,9 @@ KERN_BINFILES :=	user/hello \
 			user/faultwrite \
 			user/faultwritekernel \
 			user/prioritytest1 \
-			user/prioritytest2
+			user/prioritytest2 \
+			user/process1 \
+			user/process2
 
 # Binary files for LAB4
 KERN_BINFILES +=	user/idle \

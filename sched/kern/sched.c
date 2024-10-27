@@ -6,7 +6,7 @@
 #include <kern/monitor.h>
 #include <kern/sched.h>
 
-#define BOOST_THRESHOLD 25
+#define BOOST_THRESHOLD 45
 #define YIELD_COUNTER_DECREASE_PRIORITY 5
 
 void sched_halt(void);
