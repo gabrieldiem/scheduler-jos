@@ -25,7 +25,7 @@ sched_init()
 }
 
 /*
- * Adds data from an env to the scheduler history, 
+ * Adds data from an env to the scheduler history,
  * updating the history tail and head indexes as necessary.
  */
 void
@@ -103,7 +103,7 @@ did_process_just_finished()
 }
 
 /*
- * Finds the next executable environment in a round-robin scheduler, starting from 
+ * Finds the next executable environment in a round-robin scheduler, starting from
  * the current environment or from the next environment after a process has terminated,
  * and if there are none, returns the current environment if it is still running.
  */
@@ -145,8 +145,8 @@ round_robin_find_next()
 }
 
 /*
- * Finds the first environment of a specific type within a range of indexes, 
- * saves the first environment found of each priority in an array, and returns 
+ * Finds the first environment of a specific type within a range of indexes,
+ * saves the first environment found of each priority in an array, and returns
  * the environment with the highest priority if found.
  */
 static struct Env *
