@@ -430,12 +430,19 @@ sys_ipc_recv(void *dstva)
 	return 0;
 }
 
+/*
+ * Returns the priority of the current environment.
+ */
 static uint32_t
 sys_get_currenv_priority(void)
 {
 	return curenv->env_priority;
 }
 
+/*
+ * Decreases the priority of the current environment by delta_to_decrease.
+ * The priority of the current environment cannot be lower than LOWEST_PRIORITY.
+ */
 static void
 sys_decrease_currenv_priority(uint32_t delta_to_decrease)
 {

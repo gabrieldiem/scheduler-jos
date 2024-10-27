@@ -11,6 +11,9 @@
 
 void sched_halt(void);
 
+/*
+ * Initialize scheduler statistics.
+ */
 void
 sched_init()
 {
@@ -21,6 +24,10 @@ sched_init()
 	scheduler_info.last_env_destroyed_index = 0;
 }
 
+/*
+ * Adds data from an env to the scheduler history, 
+ * updating the history tail and head indexes as necessary.
+ */
 void
 sched_add_env_data_to_history(struct Env *env)
 {
@@ -46,6 +53,9 @@ sched_add_env_data_to_history(struct Env *env)
 	history_entry->yield_counter_at_destruction = scheduler_info.yield_counter;
 }
 
+/*
+ * Finds the first env of a given type in the envs array.
+ */
 static struct Env *
 find_first_env_of_type(int start_index, int end_index, int env_type)
 {
@@ -61,6 +71,9 @@ find_first_env_of_type(int start_index, int end_index, int env_type)
 	return env;
 }
 
+/*
+ * Returns the index of the last env that was saved to the history.
+ */
 static int
 get_latest_env_index_saved_to_history()
 {
@@ -71,18 +84,29 @@ get_latest_env_index_saved_to_history()
 	return scheduler_info.last_env_destroyed_index;
 }
 
+/*
+ * Returns true if the scheduler is running for the first time.
+ */
 static bool
 is_first_run()
 {
 	return curenv == NULL && scheduler_info.env_history_size == 0;
 }
 
+/*
+ * Returns true if the last process that was running has just finished.
+ */
 static bool
 did_process_just_finished()
 {
 	return curenv == NULL && scheduler_info.env_history_size > 0;
 }
 
+/*
+ * Finds the next executable environment in a round-robin scheduler, starting from 
+ * the current environment or from the next environment after a process has terminated,
+ * and if there are none, returns the current environment if it is still running.
+ */
 static struct Env *
 round_robin_find_next()
 {
@@ -120,6 +144,11 @@ round_robin_find_next()
 	return next;
 }
 
+/*
+ * Finds the first environment of a specific type within a range of indexes, 
+ * saves the first environment found of each priority in an array, and returns 
+ * the environment with the highest priority if found.
+ */
 static struct Env *
 find_first_env_of_type_of_highest_priority_and_scan(int start_index,
                                                     int end_index,
@@ -148,6 +177,9 @@ find_first_env_of_type_of_highest_priority_and_scan(int start_index,
 	return env;
 }
 
+/*
+ * Finds the first runnable environment of the highest priority in the envs array.
+ */
 static struct Env *
 find_first_env_of_type_of_highest_priority(int start_index, int env_type)
 {
@@ -183,6 +215,11 @@ find_first_env_of_type_of_highest_priority(int start_index, int env_type)
 	return env_selected;
 }
 
+/*
+ * Finds the next executable environment in a priority scheduler, starting from
+ * the current environment or from the next environment after a process has terminated,
+ * and if there are none, returns the current environment if it is still running.
+ */
 static struct Env *
 priority_sched_find_next()
 {
@@ -217,6 +254,9 @@ priority_sched_find_next()
 	return next;
 }
 
+/*
+ * Boosts the priority of all environments to the highest priority.
+ */
 static void
 boost_all_envs()
 {
@@ -226,12 +266,18 @@ boost_all_envs()
 	}
 }
 
+/*
+ * Returns true if the priority of an environment should be decreased.
+ */
 static bool
 should_decrease_priority(struct Env *env)
 {
 	return env->env_sched_runs_current % YIELD_COUNTER_DECREASE_PRIORITY == 0;
 }
 
+/*
+ * Decreases the priority of an environment by one.
+ */
 static void
 decrease_env_priority(struct Env *env)
 {
@@ -240,6 +286,9 @@ decrease_env_priority(struct Env *env)
 	}
 }
 
+/*
+ * Prints information about an environment history entry.
+ */
 static void
 sched_history_entry_show_info(env_info_t *history_entry)
 {
@@ -254,6 +303,9 @@ sched_history_entry_show_info(env_info_t *history_entry)
 	        history_entry->env_runs);
 }
 
+/*
+ * Prints information about the scheduler.
+ */
 static void
 sched_show_info()
 {
@@ -280,6 +332,9 @@ sched_show_info()
 	cprintf("\n");
 }
 
+/*
+ * Returns true if the scheduler should decrease the priority of an environment.
+ */
 static bool
 should_boost()
 {
