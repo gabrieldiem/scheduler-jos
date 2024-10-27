@@ -88,3 +88,6 @@ kern/console.h
 kern/sched.h
 kern/picirq.h
 kern/kclock.h
+user/prioritytest1.c
+user/prioritytest2.c 
+user/processes.c
