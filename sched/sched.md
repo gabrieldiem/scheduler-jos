@@ -8,6 +8,7 @@ Tabla de contenidos:
 
 1. [Visualización del cambio de contexto](#Visualización-del-cambio-de-contexto)
 2. [Implementación de scheduler con prioridades](#Implementación-de-scheduler-con-prioridades)
+3. [Procesos de usuario creados](#Procesos-de-usuario-creados)
 
 ### Visualización del cambio de contexto
 
@@ -168,7 +169,7 @@ La ejecución finaliza exitosamente:
 
 El scheduler con prioridades posee 5 niveles de prioridad, siendo 0 la prioridad más alta y 4 la prioridad más baja.
 
-Se tiene una política de boost de 25 ejecuciones, lo que significa que cada 25 veces que se le cede la ejecución al scheduler se elevan todas las prioridades a la más alta, esto es independiente de la cantidad de procesos que están corriendo al mismo tiempo.
+Se tiene una política de boost de 45 ejecuciones, lo que significa que cada 45 veces que se le cede la ejecución al scheduler se elevan todas las prioridades a la más alta, esto es independiente de la cantidad de procesos que están corriendo al mismo tiempo.
 
 La política de disminución de prioridad es de 5 ejecuciones, lo que significa que cuando un proceso en particular es elegido 5 veces (independientemente de que se hayan ejecutado otros procesos en el medio) se le disminuye 1 nivel de prioridad, en caso de que ya esté en el mínimo, permanecerá ahí.
 
@@ -191,3 +192,12 @@ Si no se pudo seleccionar ningún proceso para correr, se llama a `sched_halt`.
 Si sí se pudo seleccionar un proceso para correr, se le aumenta en 1 sus env_sched_runs (total y current) y antes de ejecutarlo con `env_run` se verifica si es necesario disminuir la prioridad del environment, esto se hace comparando el `env_sched_runs_current` contra el valor de la política de disminución establecida (5 elecciones del scheduler). Si es necesario disminuir la prioridad, se incrementa en 1 el campo `env_priority` del `struct Env`, recordando que que mientras más alto el valor numérico, menor es su nivel de prioridad (<i>lower is better</i>), si la prioridad ya es mínima, se deja como está.
 
 Para que un proceso hijo tenga la misma prioridad que el padre, en la syscall `sys_exofork` se realiza la igualación de prioridades, permitiendo que todas las versiones de wrappers de tipo fork tengan esta característica.
+
+### Procesos de usuario creados
+
+Con el objetivo de mostrar el comportamiento del scheduler implementado, se crearon dos nuevos procesos de usuario:
+- `looping`, un programa que itera por una gran cantidad de números con el propósito de que se activen *timer interrumpts* y así llegar a disminuir la prioridad del proceso, la cual se muestra por pantalla cada cierta cantidad de iteraciones para observar su evolución. 
+- `processes`, un programa que realiza dos forks y por lo tanto termina creando 3 procesos en total. Cada uno de ellos realiza un ciclo en el cual le cede la ejecución al scheduler para ir alternando entre los procesos en espera y así lograr que disminuyan sus prioridades.
+
+En ambos programas se podrá observar también el momento en que se aplica la política de *boosting* para elevar las prioridades de todos los procesos actuales. <br>
+Para probar la ejecución de estos nuevos procesos se pueden correr los comandos `make run-looping-nox USE_PR=1` o `make run-processes-nox USE_PR=1` para correr cada uno por separado. También se puede modificar la creación de los enviroments en `init.c` (como ya figura en la línea 78) y correrlos con `make qemu-nox USE_PR=1`.

@@ -2,6 +2,12 @@
 
 Repositorio para el esqueleto del [TP sched](https://fisop.github.io/website/tps/sched) del curso Mendez-Fresia de **Sistemas Operativos (7508) - FIUBA**
 
+## Integrantes
+ - Victoria Avalos - 108434
+ - Julieta Perez Goldstein - 107997
+ - Walter Gabriel Diem - 105618
+ - Gonzalo Ranzani - 105933
+
 ## Respuestas teóricas
 
 Utilizar el archivo `sched.md` provisto en el repositorio

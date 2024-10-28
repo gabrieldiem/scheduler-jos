@@ -91,3 +91,4 @@ kern/kclock.h
 user/prioritytest1.c
 user/prioritytest2.c 
 user/processes.c
+user/looping.c
